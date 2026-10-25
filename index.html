@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memento Cost Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-3 sm:p-6">
+
+    <div class="max-w-3xl mx-auto space-y-4">
+        
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 pb-1 border-b border-slate-800">
+            <div class="w-full sm:w-auto flex justify-center sm:justify-start">
+                <img src="https://hanicraft.in/web/assets/images/logo/logo.png" 
+                     alt="Hanicraft Logo" 
+                     class="h-12 sm:h-14 w-auto object-contain brightness-0 invert">
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="toggleSettings()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-medium transition touch-manipulation">
+                    <i class="fa-solid fa-sliders text-amber-400 mr-1.5"></i> Rates & Materials
+                </button>
+            </div>
+        </header>
+
+        <!-- Product Reference -->
+        <div class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3">
+            <input type="text" id="productName" placeholder="Product Ref / Name (e.g. Executive Wooden Shield)" oninput="calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:outline-none focus:border-amber-500">
+        </div>
+
+        <!-- Master Rates & Settings Panel -->
+        <div id="settingsPanel" class="hidden bg-slate-800/90 border border-amber-500/30 rounded-xl p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-700">
+                <span class="text-xs font-bold uppercase tracking-wide text-amber-400">Master Rates & Storage</span>
+                
+                <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                    <button type="button" onclick="exportDataToFile()" class="px-2.5 py-1 bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 rounded-md font-medium transition" title="Save backup file">
+                        <i class="fa-solid fa-download mr-1"></i> Export Backup
+                    </button>
+                    <label class="px-2.5 py-1 bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 rounded-md font-medium transition cursor-pointer">
+                        <i class="fa-solid fa-upload mr-1"></i> Import Backup
+                        <input type="file" id="importFileInput" accept=".json" onchange="importDataFromFile(event)" class="hidden">
+                    </label>
+                    <button type="button" onclick="openAddMaterialModal()" class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 rounded-md font-medium transition">
+                        + Material
+                    </button>
+                    <button type="button" onclick="openAddSubcatModal()" class="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 rounded-md font-medium transition">
+                        + Subcat
+                    </button>
+                    <button type="button" onclick="openAddVariantModal()" class="px-2.5 py-1 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded-md font-medium transition">
+                        + Thickness
+                    </button>
+                </div>
+            </div>
+
+            <!-- Painting Rates Config Section -->
+            <div class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 space-y-2 text-xs">
+                <div class="font-bold text-amber-400 flex items-center justify-between border-b border-slate-800 pb-1">
+                    <span><i class="fa-solid fa-paint-roller mr-1.5"></i> Paint/Polish Full Sheet Rates (8x4 ft / 32 sq.ft)</span>
+                </div>
+                <div id="paintRatesSettingsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs"></div>
+            </div>
+
+            <!-- Dynamic Thickness Rates Grid -->
+            <div id="thicknessRatesContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+        </div>
+
+        <!-- Add Main Material Modal -->
+        <div id="addMaterialModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+            <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 w-full max-w-sm space-y-3 shadow-xl">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wide">Add Material</h3>
+                    <button type="button" onclick="closeAddMaterialModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Material Name</label>
+                        <input type="text" id="modalMaterialName" placeholder="e.g. Glass, Brass, MDF Board" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-800 text-xs font-semibold">
+                    <button type="button" onclick="closeAddMaterialModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300">Cancel</button>
+                    <button type="button" onclick="submitAddMaterial()" class="px-4 py-1.5 rounded-lg bg-emerald-600 text-white">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Subcategory Modal -->
+        <div id="addSubcatModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+            <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 w-full max-w-sm space-y-3 shadow-xl">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wide">Add Subcategory</h3>
+                    <button type="button" onclick="closeAddSubcatModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Target Material</label>
+                        <select id="subcatMaterialSelect" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 focus:outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Subcategory Name</label>
+                        <input type="text" id="modalSubcategoryName" placeholder="e.g. Teak Wood, MDF, Frosted Glass" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-800 text-xs font-semibold">
+                    <button type="button" onclick="closeAddSubcatModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300">Cancel</button>
+                    <button type="button" onclick="submitAddSubcategory()" class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Variant Modal -->
+        <div id="addVariantModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+            <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 w-full max-w-sm space-y-3 shadow-xl">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wide">Add Thickness Variant</h3>
+                    <button type="button" onclick="closeAddVariantModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Target Material</label>
+                        <select id="modalMaterialSelect" onchange="updateModalSubcatDropdown()" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 focus:outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Subcategory</label>
+                        <select id="modalSubcatSelect" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 focus:outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Thickness Label</label>
+                        <input type="text" id="modalThicknessName" placeholder="e.g. 16 mm" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Price / Sq.Ft (₹)</label>
+                        <input type="number" id="modalThicknessRate" placeholder="e.g. 450" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-semibold focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Full Sheet Cut Cost (₹)</label>
+                        <input type="number" id="modalSheetCutCost" placeholder="e.g. 1600" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-semibold focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Full Sheet Area (Sq.Ft)</label>
+                        <input type="number" id="modalSheetAreaSqFt" value="32" placeholder="32 (for 8x4ft Wood) / 12 (for 4x3ft Acrylic)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-semibold focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-800 text-xs font-semibold">
+                    <button type="button" onclick="closeAddVariantModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300">Cancel</button>
+                    <button type="button" onclick="submitAddVariant()" class="px-4 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+
+            <!-- Inputs Column -->
+            <div class="md:col-span-7 space-y-3">
+                
+                <!-- Materials Block Container -->
+                <div class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3.5 space-y-3">
+                    <div class="flex items-center justify-between pb-1 border-b border-slate-700/50">
+                        <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Materials</span>
+                        <button type="button" onclick="openAddMaterialModal()" class="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300">
+                            + Add Material
+                        </button>
+                    </div>
+
+                    <div id="dynamicMaterialsContainer" class="space-y-2.5"></div>
+                </div>
+
+                <!-- Expenses & Profit Card -->
+                <div class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3.5 space-y-2.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-400 block">Processing & Labor</span>
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                        
+                        <!-- Paint/Polish Selection & Cost (Conditioned by Wood selection) -->
+                        <div id="paintContainerCard" class="col-span-2 sm:col-span-3 bg-slate-900/80 p-2 rounded-lg border border-slate-700/60 grid grid-cols-12 gap-2">
+                            <div class="col-span-7 sm:col-span-8">
+                                <div class="flex justify-between items-center mb-0.5">
+                                    <label class="text-[10px] text-slate-400 block">Paint/Polish Type (8x4ft)</label>
+                                    <span id="autoPaintBadge" class="text-[8px] font-bold text-amber-400 bg-amber-950 px-1 rounded">Auto</span>
+                                </div>
+                                <select id="paintTypeSelect" onchange="onPaintTypeChange()" class="w-full bg-slate-800 border border-slate-700 text-white rounded px-2 py-1 text-xs focus:outline-none">
+                                    <option value="none">None (₹0)</option>
+                                    <option value="grain_teak">Grain Teak (₹3000/sheet)</option>
+                                    <option value="grains_brown">Grains Brown (₹3000/sheet)</option>
+                                    <option value="black">Black (₹2000/sheet)</option>
+                                    <option value="sealer">Sealer / Polish Only (₹1800/sheet)</option>
+                                </select>
+                            </div>
+                            <div class="col-span-5 sm:col-span-4">
+                                <label class="text-[10px] text-slate-400 block mb-0.5">Paint Cost (₹)</label>
+                                <input type="number" id="paintCost" value="0" oninput="calculate(false, false, false, true)" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 font-semibold text-white focus:outline-none" title="Auto calculated based on wood area, manual entry allowed">
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Cut Cost Cards -->
+                        <div id="cncCostCard" class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/60">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-400 block">Wood CNC Cut (₹)</label>
+                                <span id="autoCncBadge" class="text-[8px] font-bold text-amber-400 bg-amber-950 px-1 rounded">Auto</span>
+                            </div>
+                            <input type="number" id="cncCost" value="0" oninput="calculate(false, false, true)" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 font-semibold text-white focus:outline-none" title="Auto calculated from selected wood thickness">
+                        </div>
+
+                        <div id="laserCutCostCard" class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/60">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-400 block">Acrylic Laser Cut (₹)</label>
+                                <span id="autoLaserBadge" class="text-[8px] font-bold text-amber-400 bg-amber-950 px-1 rounded">Auto</span>
+                            </div>
+                            <input type="number" id="laserCutCost" value="0" oninput="calculate(false, true, false)" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 font-semibold text-white focus:outline-none" title="Auto calculated from selected acrylic thickness">
+                        </div>
+
+                        <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/60">
+                            <label class="text-[10px] text-slate-400 block mb-0.5">Print (₹)</label>
+                            <input type="number" id="printCost" value="0" oninput="calculate()" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 font-semibold text-white focus:outline-none">
+                        </div>
+                        <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/60">
+                            <label class="text-[10px] text-slate-400 block mb-0.5">Laser Engrave (₹)</label>
+                            <input type="number" id="laserCost" value="0" oninput="calculate()" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 font-semibold text-white focus:outline-none">
+                        </div>
+                        <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/60">
+                            <label class="text-[10px] text-slate-400 block mb-0.5">Labor (₹)</label>
+                            <input type="number" id="laborCost" value="0" oninput="calculate()" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 font-semibold text-white focus:outline-none">
+                        </div>
+                        <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/60">
+                            <label class="text-[10px] text-slate-400 block mb-0.5">Box/Other (₹)</label>
+                            <input type="number" id="otherCost" value="0" oninput="calculate()" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 font-semibold text-white focus:outline-none">
+                        </div>
+
+                        <!-- Quantity Selector -->
+                        <div class="bg-amber-950/40 p-2 rounded-lg border border-amber-500/40">
+                            <label class="text-[10px] text-amber-300 font-bold block mb-0.5">Quantity (Pcs)</label>
+                            <input type="number" id="itemQuantity" value="1" min="1" oninput="onQuantityChange()" class="w-full bg-slate-800 border border-amber-500/50 rounded px-2 py-1 font-bold text-amber-400 focus:outline-none">
+                        </div>
+
+                        <!-- Profit Percentage Input -->
+                        <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/60 col-span-2 sm:col-span-1">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-400 block">Profit (%)</label>
+                                <span id="autoProfitBadge" class="text-[9px] font-semibold text-emerald-400 bg-emerald-950 px-1 rounded">Auto</span>
+                            </div>
+                            <input type="number" id="profitMargin" value="200" oninput="calculate(true)" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 font-semibold text-emerald-400 focus:outline-none" title="Manual profit entry allowed">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Minimal Summary Column -->
+            <div class="md:col-span-5 bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-between space-y-4">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block pb-2 border-b border-slate-700/60 mb-2">
+                        Summary
+                    </span>
+
+                    <div class="space-y-1.5 text-xs">
+                        <div id="materialBreakdownContainer" class="space-y-1"></div>
+
+                        <div class="pt-1.5 border-t border-slate-700/50 flex justify-between text-slate-300">
+                            <span>Materials Total:</span>
+                            <span id="totalMatCostDisplay" class="font-bold text-white">₹0.00</span>
+                        </div>
+
+                        <div id="paintSummaryRow" class="flex justify-between text-slate-400">
+                            <span>Paint & Finishing:</span>
+                            <span id="paintCostDisplay" class="text-white">₹0.00</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400">
+                            <span>Printing:</span>
+                            <span id="printCostDisplay" class="text-white">₹0.00</span>
+                        </div>
+                        <div id="machiningSummaryRow" class="flex justify-between text-slate-400">
+                            <span>Cutting & Machining:</span>
+                            <span id="machiningCostDisplay" class="text-white">₹0.00</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400">
+                            <span>Labor & Packaging:</span>
+                            <span id="laborOtherCostDisplay" class="text-white">₹0.00</span>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-700/80 flex justify-between font-bold text-xs text-slate-200">
+                            <span>Unit Production Cost:</span>
+                            <span id="totalCostDisplay" class="text-amber-400">₹0.00</span>
+                        </div>
+
+                        <div class="flex justify-between text-emerald-400 font-medium">
+                            <span>Profit (<span id="profitPctLabel">200</span>%):</span>
+                            <span id="profitValDisplay">₹0.00</span>
+                        </div>
+                        <div class="flex justify-between text-slate-300 font-medium pt-1 border-t border-slate-700/40">
+                            <span>Quantity:</span>
+                            <span id="qtyDisplay" class="font-bold text-amber-400">1 Pc</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Final Price Banner -->
+                <div class="bg-emerald-950/40 border border-emerald-500/30 p-3.5 rounded-xl text-center space-y-2">
+                    <div>
+                        <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Unit Price</span>
+                        <div id="sellingPriceDisplay" class="text-xl font-extrabold text-emerald-400 mt-0.5">₹0.00</div>
+                    </div>
+
+                    <div class="pt-1.5 border-t border-emerald-500/20 flex justify-between items-center text-xs">
+                        <span class="text-slate-300 font-medium">Grand Total (<span id="grandTotalQtyLabel">1</span> Pcs):</span>
+                        <span id="grandTotalDisplay" class="text-lg font-black text-amber-400">₹0.00</span>
+                    </div>
+
+                    <button type="button" onclick="sendToWhatsApp()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 shadow transition touch-manipulation">
+                        <i class="fa-brands fa-whatsapp text-base"></i> Send Quotation
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'memento_material_rates_v13_layer_toggle';
+        let materialRates = loadSavedRates();
+
+        if (navigator.storage && navigator.storage.persist) {
+            navigator.storage.persist().then(granted => {
+                if (granted) {
+                    console.log("Permanent storage persistence granted!");
+                }
+            });
+        }
+
+        function saveRates() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(materialRates));
+            } catch (e) {
+                console.error('LocalStorage save failed!', e);
+            }
+        }
+
+        function loadSavedRates() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && Array.isArray(parsed.materials) && parsed.materials.length > 0) {
+                        if (!parsed.paintRates) {
+                            parsed.paintRates = {
+                                grain_teak: { name: 'Grain Teak', rate: 3000, sheetSqFt: 32 },
+                                grains_brown: { name: 'Grains Brown', rate: 3000, sheetSqFt: 32 },
+                                black: { name: 'Black', rate: 2000, sheetSqFt: 32 },
+                                sealer: { name: 'Sealer (Polish)', rate: 1800, sheetSqFt: 32 }
+                            };
+                        }
+                        return parsed;
+                    }
+                }
+            } catch (e) {
+                console.warn('LocalStorage load fallback:', e);
+            }
+            
+            return {
+                paintRates: {
+                    grain_teak: { name: 'Grain Teak', rate: 3000, sheetSqFt: 32 },
+                    grains_brown: { name: 'Grains Brown', rate: 3000, sheetSqFt: 32 },
+                    black: { name: 'Black', rate: 2000, sheetSqFt: 32 },
+                    sealer: { name: 'Sealer (Polish)', rate: 1800, sheetSqFt: 32 }
+                },
+                materials: [
+                    {
+                        id: 'wood',
+                        name: 'Wood Layer',
+                        icon: 'fa-tree',
+                        subcategories: [
+                            {
+                                id: 'rubwood', name: 'Rubwood', variants: [
+                                    { id: 'rw_4mm', name: '4 mm', rate: 200, cutCostSheet: 900, sheetAreaSqFt: 32 },
+                                    { id: 'rw_5mm', name: '5 mm', rate: 220, cutCostSheet: 1000, sheetAreaSqFt: 32 },
+                                    { id: 'rw_6mm', name: '6 mm', rate: 250, cutCostSheet: 1000, sheetAreaSqFt: 32 },
+                                    { id: 'rw_8mm', name: '8 mm', rate: 320, cutCostSheet: 1150, sheetAreaSqFt: 32 },
+                                    { id: 'rw_10mm', name: '10 mm', rate: 370, cutCostSheet: 1200, sheetAreaSqFt: 32 },
+                                    { id: 'rw_12mm', name: '12 mm', rate: 420, cutCostSheet: 1400, sheetAreaSqFt: 32 },
+                                    { id: 'rw_16mm', name: '16 mm', rate: 520, cutCostSheet: 1600, sheetAreaSqFt: 32 },
+                                    { id: 'rw_18mm', name: '18 mm', rate: 580, cutCostSheet: 1700, sheetAreaSqFt: 32 },
+                                    { id: 'rw_25mm', name: '25 mm', rate: 750, cutCostSheet: 2200, sheetAreaSqFt: 32 }
+                                ]
+                            },
+                            {
+                                id: 'mdf', name: 'MDF', variants: [
+                                    { id: 'mdf_3mm', name: '3 mm', rate: 120, cutCostSheet: 600, sheetAreaSqFt: 32 },
+                                    { id: 'mdf_4mm', name: '4 mm', rate: 140, cutCostSheet: 900, sheetAreaSqFt: 32 },
+                                    { id: 'mdf_6mm', name: '6 mm', rate: 180, cutCostSheet: 1000, sheetAreaSqFt: 32 },
+                                    { id: 'mdf_8mm', name: '8 mm', rate: 220, cutCostSheet: 1150, sheetAreaSqFt: 32 },
+                                    { id: 'mdf_10mm', name: '10 mm', rate: 260, cutCostSheet: 1200, sheetAreaSqFt: 32 },
+                                    { id: 'mdf_12mm', name: '12 mm', rate: 300, cutCostSheet: 1400, sheetAreaSqFt: 32 },
+                                    { id: 'mdf_16mm', name: '16 mm', rate: 380, cutCostSheet: 1600, sheetAreaSqFt: 32 },
+                                    { id: 'mdf_18mm', name: '18 mm', rate: 420, cutCostSheet: 1700, sheetAreaSqFt: 32 },
+                                    { id: 'mdf_25mm', name: '25 mm', rate: 550, cutCostSheet: 2200, sheetAreaSqFt: 32 }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'acrylic',
+                        name: 'Acrylic Layer',
+                        icon: 'fa-layer-group',
+                        subcategories: [
+                            {
+                                id: 'clear_acrylic', name: 'Clear Acrylic', variants: [
+                                    { id: 'a_2mm', name: '2 mm', rate: 250, cutCostSheet: 450, sheetAreaSqFt: 12 },
+                                    { id: 'a_3mm', name: '3 mm', rate: 300, cutCostSheet: 550, sheetAreaSqFt: 12 },
+                                    { id: 'a_4mm', name: '4 mm', rate: 380, cutCostSheet: 650, sheetAreaSqFt: 12 },
+                                    { id: 'a_5mm', name: '5 mm', rate: 450, cutCostSheet: 750, sheetAreaSqFt: 12 },
+                                    { id: 'a_6mm', name: '6 mm', rate: 520, cutCostSheet: 850, sheetAreaSqFt: 12 },
+                                    { id: 'a_8mm', name: '8 mm', rate: 680, cutCostSheet: 850, sheetAreaSqFt: 12 },
+                                    { id: 'a_10mm', name: '10 mm', rate: 850, cutCostSheet: 1000, sheetAreaSqFt: 12 },
+                                    { id: 'a_12mm', name: '12 mm', rate: 1050, cutCostSheet: 1200, sheetAreaSqFt: 12 }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'glass',
+                        name: 'Glass Layer',
+                        icon: 'fa-window-maximize',
+                        subcategories: [
+                            {
+                                id: 'clear_glass', name: 'Clear Glass', variants: [
+                                    { id: 'g_4mm', name: '4 mm', rate: 280, cutCostSheet: 0, sheetAreaSqFt: 1 },
+                                    { id: 'g_6mm', name: '6 mm', rate: 380, cutCostSheet: 0, sheetAreaSqFt: 1 }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            };
+        }
+
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        function renderDynamicMaterials() {
+            const container = document.getElementById('dynamicMaterialsContainer');
+            const summaryContainer = document.getElementById('materialBreakdownContainer');
+            if (!container || !summaryContainer) return;
+
+            container.innerHTML = '';
+            summaryContainer.innerHTML = '';
+
+            materialRates.materials.forEach(mat => {
+                const matCard = document.createElement('div');
+                matCard.className = 'p-2.5 bg-slate-900/80 border border-slate-700/60 rounded-xl space-y-2';
+                
+                let subcatOptions = '';
+                mat.subcategories.forEach(sub => {
+                    subcatOptions += `<option value="${sub.id}">${sub.name}</option>`;
+                });
+
+                matCard.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                        <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-200">
+                            <input type="checkbox" id="chk_${mat.id}" checked onchange="calculate()" class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-amber-500">
+                            <i class="fa-solid ${mat.icon || 'fa-cubes'} text-amber-400"></i> ${mat.name}
+                        </label>
+                        <span id="subtotal_${mat.id}" class="text-xs font-bold text-amber-400">₹0.00</span>
+                    </div>
+
+                    <div class="grid grid-cols-12 gap-2 text-xs">
+                        <div class="col-span-6 sm:col-span-4">
+                            <label class="text-[10px] text-slate-400 block mb-0.5">Type</label>
+                            <select id="subcat_${mat.id}" onchange="populateThicknessDropdown('${mat.id}')" class="w-full bg-slate-800 border border-slate-700 text-white rounded px-2 py-1 text-xs focus:outline-none">
+                                ${subcatOptions}
+                            </select>
+                        </div>
+                        <div class="col-span-6 sm:col-span-4">
+                            <label class="text-[10px] text-slate-400 block mb-0.5">Thickness</label>
+                            <select id="thickness_${mat.id}" onchange="calculate()" class="w-full bg-slate-800 border border-slate-700 text-white rounded px-2 py-1 text-xs focus:outline-none">
+                            </select>
+                        </div>
+                        <div class="col-span-6 sm:col-span-2">
+                            <label class="text-[10px] text-slate-400 block mb-0.5">W (in)</label>
+                            <input type="number" id="w_${mat.id}" value="8" oninput="calculate()" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white font-semibold focus:outline-none">
+                        </div>
+                        <div class="col-span-6 sm:col-span-2">
+                            <label class="text-[10px] text-slate-400 block mb-0.5">H (in)</label>
+                            <input type="number" id="h_${mat.id}" value="10" oninput="calculate()" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white font-semibold focus:outline-none">
+                        </div>
+                    </div>
+                `;
+                container.appendChild(matCard);
+
+                populateThicknessDropdown(mat.id);
+
+                const summaryRow = document.createElement('div');
+                summaryRow.id = `row_${mat.id}`;
+                summaryRow.className = 'flex justify-between text-slate-400';
+                summaryRow.innerHTML = `
+                    <span>• ${mat.name} (<span id="subcatLabel_${mat.id}">-</span>):</span>
+                    <span id="costDisplay_${mat.id}" class="text-white">₹0.00</span>
+                `;
+                summaryContainer.appendChild(summaryRow);
+            });
+        }
+
+        function populateThicknessDropdown(matId) {
+            const mat = materialRates.materials.find(m => m.id === matId);
+            if (!mat) return;
+
+            const subcatSelect = document.getElementById(`subcat_${matId}`);
+            const thicknessSelect = document.getElementById(`thickness_${matId}`);
+            if (!subcatSelect || !thicknessSelect) return;
+
+            const subcatId = subcatSelect.value || (mat.subcategories[0] ? mat.subcategories[0].id : null);
+            const subcat = mat.subcategories.find(s => s.id === subcatId) || mat.subcategories[0];
+
+            thicknessSelect.innerHTML = '';
+            if (subcat && subcat.variants) {
+                subcat.variants.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.id;
+                    opt.text = `${v.name} (₹${v.rate}/sq.ft)`;
+                    thicknessSelect.appendChild(opt);
+                });
+            }
+            calculate();
+        }
+
+        function renderSettingsPanel() {
+            const paintContainer = document.getElementById('paintRatesSettingsContainer');
+            if (paintContainer && materialRates.paintRates) {
+                paintContainer.innerHTML = '';
+                Object.keys(materialRates.paintRates).forEach(key => {
+                    const item = materialRates.paintRates[key];
+                    paintContainer.innerHTML += `
+                        <div class="flex items-center justify-between bg-slate-800 p-2 rounded border border-slate-700">
+                            <span class="text-slate-300 font-medium text-[11px]">${item.name}</span>
+                            <div class="flex items-center gap-1">
+                                <span class="text-slate-400">₹</span>
+                                <input type="number" value="${item.rate}" onchange="updatePaintMasterRate('${key}', this.value)" class="w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-amber-400 font-bold text-xs focus:outline-none">
+                                <span class="text-[10px] text-slate-400">/32sqft</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            const container = document.getElementById('thicknessRatesContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            materialRates.materials.forEach(mat => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900 border border-slate-700 rounded-lg p-2.5 space-y-2 text-xs';
+
+                let subcatContent = '';
+                mat.subcategories.forEach(sub => {
+                    let variantItems = '';
+                    sub.variants.forEach((v, idx) => {
+                        const area = v.sheetAreaSqFt || (mat.id === 'wood' ? 32 : 12);
+                        variantItems += `
+                            <div class="flex items-center justify-between text-[11px] bg-slate-800 px-2 py-1 rounded border border-slate-700/60">
+                                <span class="text-slate-300 font-medium">${v.name}</span>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-amber-400 font-bold">₹${v.rate}/sq.ft</span>
+                                    <span class="text-slate-500">|</span>
+                                    <span class="text-xs font-semibold text-emerald-400">Cut: ₹${v.cutCostSheet || 0}/${area}sqft</span>
+                                    <button type="button" onclick="removeVariant('${mat.id}', '${sub.id}', ${idx})" class="text-rose-400 hover:text-rose-300 ml-1" title="Delete Thickness">
+                                        <i class="fa-solid fa-trash-can text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    subcatContent += `
+                        <div class="space-y-1 pt-1.5 border-t border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase text-slate-400">${sub.name}</span>
+                                ${mat.subcategories.length > 1 ? `
+                                    <button type="button" onclick="deleteSubcategory('${mat.id}', '${sub.id}')" class="text-rose-400 hover:text-rose-300 text-[10px]" title="Delete Subcategory">
+                                        <i class="fa-solid fa-trash-can"></i> Subcat
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <div class="space-y-1">${variantItems}</div>
+                        </div>
+                    `;
+                });
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between font-bold text-white border-b border-slate-800 pb-1">
+                        <span class="text-amber-400 flex items-center gap-1.5">
+                            <i class="fa-solid ${mat.icon || 'fa-cubes'}"></i> ${mat.name}
+                        </span>
+                        ${materialRates.materials.length > 1 ? `
+                            <button type="button" onclick="deleteMainMaterial('${mat.id}')" class="text-rose-400 hover:text-rose-300 text-xs font-normal" title="Delete Material">
+                                <i class="fa-solid fa-trash mr-1"></i> Delete
+                            </button>
+                        ` : ''}
+                    </div>
+                    <div class="space-y-2">${subcatContent}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updatePaintMasterRate(key, val) {
+            const numericVal = parseFloat(val) || 0;
+            if (materialRates.paintRates && materialRates.paintRates[key]) {
+                materialRates.paintRates[key].rate = numericVal;
+                saveRates();
+                calculate();
+            }
+        }
+
+        function openAddMaterialModal() {
+            document.getElementById('addMaterialModal').classList.remove('hidden');
+        }
+        function closeAddMaterialModal() {
+            document.getElementById('addMaterialModal').classList.add('hidden');
+        }
+
+        function openAddSubcatModal() {
+            const sel = document.getElementById('subcatMaterialSelect');
+            sel.innerHTML = '';
+            materialRates.materials.forEach(m => {
+                sel.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+            });
+            document.getElementById('addSubcatModal').classList.remove('hidden');
+        }
+        function closeAddSubcatModal() {
+            document.getElementById('addSubcatModal').classList.add('hidden');
+        }
+
+        function openAddVariantModal() {
+            const matSel = document.getElementById('modalMaterialSelect');
+            matSel.innerHTML = '';
+            materialRates.materials.forEach(m => {
+                matSel.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+            });
+            updateModalSubcatDropdown();
+            document.getElementById('addVariantModal').classList.remove('hidden');
+        }
+        function closeAddVariantModal() {
+            document.getElementById('addVariantModal').classList.add('hidden');
+        }
+
+        function updateModalSubcatDropdown() {
+            const matId = document.getElementById('modalMaterialSelect').value;
+            const subSel = document.getElementById('modalSubcatSelect');
+            subSel.innerHTML = '';
+
+            const mat = materialRates.materials.find(m => m.id === matId);
+            if (mat && mat.subcategories) {
+                mat.subcategories.forEach(s => {
+                    subSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                });
+            }
+
+            const areaInput = document.getElementById('modalSheetAreaSqFt');
+            if (areaInput) {
+                areaInput.value = (matId === 'wood') ? 32 : 12;
+            }
+        }
+
+        function submitAddMaterial() {
+            const matName = document.getElementById('modalMaterialName').value.trim();
+
+            if (!matName) return;
+
+            const matId = `mat_${Date.now()}`;
+            const subcatId = `sub_${matId}_1`;
+
+            materialRates.materials.push({
+                id: matId,
+                name: matName,
+                icon: 'fa-cubes',
+                subcategories: [{
+                    id: subcatId,
+                    name: 'Standard',
+                    variants: []
+                }]
+            });
+
+            document.getElementById('modalMaterialName').value = '';
+            saveRates();
+            renderDynamicMaterials();
+            renderSettingsPanel();
+            closeAddMaterialModal();
+            calculate();
+        }
+
+        function submitAddSubcategory() {
+            const matId = document.getElementById('subcatMaterialSelect').value;
+            const subcatName = document.getElementById('modalSubcategoryName').value.trim();
+
+            if (!subcatName) return;
+
+            const mat = materialRates.materials.find(m => m.id === matId);
+            if (mat) {
+                const newSubcatId = `sub_${matId}_${Date.now()}`;
+                mat.subcategories.push({
+                    id: newSubcatId,
+                    name: subcatName,
+                    variants: []
+                });
+
+                document.getElementById('modalSubcategoryName').value = '';
+                saveRates();
+                renderDynamicMaterials();
+                renderSettingsPanel();
+                closeAddSubcatModal();
+                calculate();
+            }
+        }
+
+        function submitAddVariant() {
+            const matId = document.getElementById('modalMaterialSelect').value;
+            const subcatId = document.getElementById('modalSubcatSelect').value;
+            const name = document.getElementById('modalThicknessName').value.trim();
+            const rate = parseFloat(document.getElementById('modalThicknessRate').value) || 0;
+            const cutCostSheet = parseFloat(document.getElementById('modalSheetCutCost').value) || 0;
+            const sheetAreaSqFt = parseFloat(document.getElementById('modalSheetAreaSqFt').value) || (matId === 'wood' ? 32 : 12);
+
+            if (!name) return;
+
+            const mat = materialRates.materials.find(m => m.id === matId);
+            const subcat = mat?.subcategories.find(s => s.id === subcatId);
+
+            if (subcat) {
+                subcat.variants.push({
+                    id: `v_${subcatId}_${Date.now()}`,
+                    name: name,
+                    rate: rate,
+                    cutCostSheet: cutCostSheet,
+                    sheetAreaSqFt: sheetAreaSqFt
+                });
+
+                saveRates();
+                renderSettingsPanel();
+                populateThicknessDropdown(matId);
+                closeAddVariantModal();
+                calculate();
+            }
+        }
+
+        function deleteMainMaterial(matId) {
+            if (materialRates.materials.length <= 1) return;
+            materialRates.materials = materialRates.materials.filter(m => m.id !== matId);
+            
+            saveRates();
+            renderDynamicMaterials();
+            renderSettingsPanel();
+            calculate();
+        }
+
+        function deleteSubcategory(matId, subcatId) {
+            const mat = materialRates.materials.find(m => m.id === matId);
+            if (!mat || mat.subcategories.length <= 1) return;
+
+            mat.subcategories = mat.subcategories.filter(s => s.id !== subcatId);
+
+            saveRates();
+            renderDynamicMaterials();
+            renderSettingsPanel();
+            calculate();
+        }
+
+        function removeVariant(matId, subcatId, vIdx) {
+            const mat = materialRates.materials.find(m => m.id === matId);
+            const subcat = mat?.subcategories.find(s => s.id === subcatId);
+            if (!subcat) return;
+
+            subcat.variants.splice(vIdx, 1);
+            
+            saveRates();
+            renderSettingsPanel();
+            populateThicknessDropdown(matId);
+            calculate();
+        }
+
+        function exportDataToFile() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(materialRates, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `hanicraft_memento_rates_backup_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importDataFromFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed && Array.isArray(parsed.materials)) {
+                        materialRates = parsed;
+                        saveRates();
+                        renderDynamicMaterials();
+                        renderSettingsPanel();
+                        calculate();
+                        alert('Backup imported successfully!');
+                    } else {
+                        alert('Invalid backup file structure.');
+                    }
+                } catch (err) {
+                    alert('Error parsing backup file.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function getAutoProfitPercentage(qty) {
+            if (qty >= 1 && qty <= 2) return 200;
+            if (qty >= 3 && qty <= 5) return 150;
+            if (qty >= 6 && qty <= 10) return 100;
+            if (qty >= 11 && qty <= 20) return 70;
+            if (qty >= 21 && qty <= 50) return 50;
+            if (qty >= 51 && qty <= 100) return 40;
+            if (qty > 100) return 30;
+            return 200;
+        }
+
+        function onQuantityChange() {
+            const qtyInput = document.getElementById('itemQuantity');
+            let qty = parseInt(qtyInput.value) || 1;
+            if (qty < 1) {
+                qty = 1;
+                qtyInput.value = 1;
+            }
+
+            const autoProfit = getAutoProfitPercentage(qty);
+            document.getElementById('profitMargin').value = autoProfit;
+            document.getElementById('autoProfitBadge').classList.remove('hidden');
+            calculate();
+        }
+
+        function onPaintTypeChange() {
+            document.getElementById('autoPaintBadge').classList.remove('hidden');
+            calculate();
+        }
+
+        function calculate(isManualProfitEdit = false, isManualLaserEdit = false, isManualCncEdit = false, isManualPaintEdit = false) {
+            if (isManualProfitEdit) {
+                document.getElementById('autoProfitBadge').classList.add('hidden');
+            }
+
+            if (isManualLaserEdit) {
+                document.getElementById('autoLaserBadge').classList.add('hidden');
+            }
+
+            if (isManualCncEdit) {
+                document.getElementById('autoCncBadge').classList.add('hidden');
+            }
+
+            if (isManualPaintEdit) {
+                document.getElementById('autoPaintBadge').classList.add('hidden');
+            }
+
+            let totalMatCost = 0;
+            let totalAutoLaserCutCost = 0;
+            let totalAutoCncCutCost = 0;
+            let woodSqFtTotal = 0;
+
+            const woodChecked = document.getElementById('chk_wood')?.checked || false;
+            const acrylicChecked = document.getElementById('chk_acrylic')?.checked || false;
+
+            // Dynamically show or hide cutting & paint cards based on checked layers
+            const cncCard = document.getElementById('cncCostCard');
+            const laserCard = document.getElementById('laserCutCostCard');
+            const paintCard = document.getElementById('paintContainerCard');
+
+            if (woodChecked) {
+                if (cncCard) cncCard.classList.remove('hidden');
+                if (paintCard) paintCard.classList.remove('hidden');
+            } else {
+                if (cncCard) cncCard.classList.add('hidden');
+                if (paintCard) paintCard.classList.add('hidden');
+                document.getElementById('cncCost').value = 0;
+                document.getElementById('paintCost').value = 0;
+            }
+
+            if (acrylicChecked) {
+                if (laserCard) laserCard.classList.remove('hidden');
+            } else {
+                if (laserCard) laserCard.classList.add('hidden');
+                document.getElementById('laserCutCost').value = 0;
+            }
+
+            const fmt = (val) => '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            materialRates.materials.forEach(mat => {
+                const chk = document.getElementById(`chk_${mat.id}`);
+                if (!chk || !chk.checked) {
+                    const subEl = document.getElementById(`subtotal_${mat.id}`);
+                    if (subEl) subEl.innerText = '₹0.00';
+                    const rowEl = document.getElementById(`row_${mat.id}`);
+                    if (rowEl) rowEl.classList.add('hidden');
+                    return;
+                }
+
+                const w = parseFloat(document.getElementById(`w_${mat.id}`)?.value) || 0;
+                const h = parseFloat(document.getElementById(`h_${mat.id}`)?.value) || 0;
+                const sqFeet = (w * h) / 144;
+
+                if (mat.id === 'wood') {
+                    woodSqFtTotal += sqFeet;
+                }
+
+                const subcatId = document.getElementById(`subcat_${mat.id}`)?.value;
+                const variantId = document.getElementById(`thickness_${mat.id}`)?.value;
+
+                const subcat = mat.subcategories.find(s => s.id === subcatId) || mat.subcategories[0];
+                const variant = subcat?.variants.find(v => v.id === variantId) || subcat?.variants[0];
+
+                const rate = variant ? variant.rate : 0;
+                const cost = sqFeet * rate;
+                totalMatCost += cost;
+
+                // Auto calculate Cutting cost based on layer type
+                if (variant && variant.cutCostSheet) {
+                    const fullSheetSqFt = variant.sheetAreaSqFt || (mat.id === 'wood' ? 32 : 12);
+                    const cutPerSqFt = variant.cutCostSheet / fullSheetSqFt;
+                    
+                    if (mat.id === 'wood' && woodChecked) {
+                        totalAutoCncCutCost += sqFeet * cutPerSqFt;
+                    } else if (mat.id === 'acrylic' && acrylicChecked) {
+                        totalAutoLaserCutCost += sqFeet * cutPerSqFt;
+                    }
+                }
+
+                const subtotalEl = document.getElementById(`subtotal_${mat.id}`);
+                if (subtotalEl) subtotalEl.innerText = fmt(cost);
+
+                const costDisp = document.getElementById(`costDisplay_${mat.id}`);
+                if (costDisp) costDisp.innerText = fmt(cost);
+
+                if (subcat) {
+                    const subLbl = document.getElementById(`subcatLabel_${mat.id}`);
+                    if (subLbl) subLbl.innerText = subcat.name;
+                }
+
+                const rowEl = document.getElementById(`row_${mat.id}`);
+                if (rowEl) rowEl.classList.remove('hidden');
+            });
+
+            const qty = parseInt(document.getElementById('itemQuantity').value) || 1;
+
+            // Enforce minimum floor rules for 1 to 2 Pcs
+            if (qty >= 1 && qty <= 2) {
+                if (woodChecked && totalAutoCncCutCost > 0 && totalAutoCncCutCost < 300) {
+                    totalAutoCncCutCost = 300;
+                }
+                if (acrylicChecked && totalAutoLaserCutCost > 0 && totalAutoLaserCutCost < 200) {
+                    totalAutoLaserCutCost = 200;
+                }
+            }
+
+            // Auto calculate Paint/Polish cost with minimum ₹250 rule for 1-2 quantity
+            if (woodChecked && !isManualPaintEdit) {
+                const paintKey = document.getElementById('paintTypeSelect')?.value || 'none';
+                let calculatedPaintCost = 0;
+
+                if (paintKey !== 'none' && materialRates.paintRates && materialRates.paintRates[paintKey]) {
+                    const sheetRate = materialRates.paintRates[paintKey].rate;
+                    const sheetSqFt = materialRates.paintRates[paintKey].sheetSqFt || 32;
+                    const paintPerSqFt = sheetRate / sheetSqFt;
+                    calculatedPaintCost = woodSqFtTotal * paintPerSqFt;
+
+                    // Enforce Minimum ₹250 Paint Cost for 1 to 2 Pcs
+                    if (qty >= 1 && qty <= 2 && calculatedPaintCost > 0 && calculatedPaintCost < 250) {
+                        calculatedPaintCost = 250;
+                    }
+                }
+
+                document.getElementById('paintCost').value = Math.round(calculatedPaintCost);
+                document.getElementById('autoPaintBadge').classList.remove('hidden');
+            }
+
+            // Update Laser Cut Cost automatically if auto mode is active
+            if (acrylicChecked && !isManualLaserEdit && totalAutoLaserCutCost > 0) {
+                document.getElementById('laserCutCost').value = Math.round(totalAutoLaserCutCost);
+                document.getElementById('autoLaserBadge').classList.remove('hidden');
+            }
+
+            // Update CNC Cut Cost automatically if auto mode is active
+            if (woodChecked && !isManualCncEdit && totalAutoCncCutCost > 0) {
+                document.getElementById('cncCost').value = Math.round(totalAutoCncCutCost);
+                document.getElementById('autoCncBadge').classList.remove('hidden');
+            }
+
+            const paint = woodChecked ? (parseFloat(document.getElementById('paintCost').value) || 0) : 0;
+            const print = parseFloat(document.getElementById('printCost').value) || 0;
+            const cnc = woodChecked ? (parseFloat(document.getElementById('cncCost').value) || 0) : 0;
+            const laserCut = acrylicChecked ? (parseFloat(document.getElementById('laserCutCost').value) || 0) : 0;
+            const laser = parseFloat(document.getElementById('laserCost').value) || 0;
+            const labor = parseFloat(document.getElementById('laborCost').value) || 0;
+            const other = parseFloat(document.getElementById('otherCost').value) || 0;
+            const marginPct = parseFloat(document.getElementById('profitMargin').value) || 0;
+
+            const unitProdCost = totalMatCost + paint + print + cnc + laserCut + laser + labor + other;
+            const profitVal = unitProdCost * (marginPct / 100);
+            const unitSellingPrice = unitProdCost + profitVal;
+            const grandTotal = unitSellingPrice * qty;
+
+            document.getElementById('totalMatCostDisplay').innerText = fmt(totalMatCost);
+            
+            const paintRow = document.getElementById('paintSummaryRow');
+            if (paintRow) {
+                if (woodChecked) paintRow.classList.remove('hidden');
+                else paintRow.classList.add('hidden');
+            }
+            document.getElementById('paintCostDisplay').innerText = fmt(paint);
+
+            document.getElementById('printCostDisplay').innerText = fmt(print);
+            
+            const machiningRow = document.getElementById('machiningSummaryRow');
+            if (machiningRow) {
+                if (woodChecked || acrylicChecked || laser > 0) machiningRow.classList.remove('hidden');
+                else machiningRow.classList.add('hidden');
+            }
+            document.getElementById('machiningCostDisplay').innerText = fmt(cnc + laserCut + laser);
+
+            document.getElementById('laborOtherCostDisplay').innerText = fmt(labor + other);
+
+            document.getElementById('totalCostDisplay').innerText = fmt(unitProdCost);
+            document.getElementById('profitPctLabel').innerText = marginPct;
+            document.getElementById('profitValDisplay').innerText = fmt(profitVal);
+            document.getElementById('qtyDisplay').innerText = `${qty} ${qty > 1 ? 'Pcs' : 'Pc'}`;
+
+            document.getElementById('sellingPriceDisplay').innerText = fmt(unitSellingPrice);
+            document.getElementById('grandTotalQtyLabel').innerText = qty;
+            document.getElementById('grandTotalDisplay').innerText = fmt(grandTotal);
+        }
+
+        function sendToWhatsApp() {
+            const prodName = document.getElementById('productName').value.trim() || 'Custom Memento';
+            const qty = parseInt(document.getElementById('itemQuantity').value) || 1;
+            
+            let materialsText = '';
+            materialRates.materials.forEach(mat => {
+                const chk = document.getElementById(`chk_${mat.id}`);
+                if (chk && chk.checked) {
+                    const w = document.getElementById(`w_${mat.id}`)?.value || '0';
+                    const h = document.getElementById(`h_${mat.id}`)?.value || '0';
+                    const subcatName = document.getElementById(`subcatLabel_${mat.id}`)?.innerText || '';
+                    const sel = document.getElementById(`thickness_${mat.id}`);
+                    const text = sel?.options[sel.selectedIndex]?.text.split('(')[0].trim() || '';
+                    materialsText += `• *${mat.name} (${subcatName}):* ${text} (${w}" x ${h}")\n`;
+                }
+            });
+
+            if (!materialsText) materialsText = '• Standard Specification\n';
+
+            const unitSellingPrice = document.getElementById('sellingPriceDisplay').innerText;
+            const grandTotal = document.getElementById('grandTotalDisplay').innerText;
+
+            const msg = `*HANICRAFT CREATIVES LLP*\n` +
+                        `*OFFICIAL QUOTATION*\n` +
+                        `------------------------------------\n` +
+                        `📌 *Product:* ${prodName}\n` +
+                        `📦 *Quantity:* ${qty} ${qty > 1 ? 'Pcs' : 'Pc'}\n\n` +
+                        `📋 *Specifications:*\n${materialsText}\n` +
+                        `🏷 *Unit Price:* ${unitSellingPrice}\n` +
+                        `💳 *Grand Total (${qty} Pcs):* *${grandTotal}*\n` +
+                        `------------------------------------\n` +
+                        `⏳ *Quotation Validity:* 25 Days`;
+
+            const phone = "919645030951";
+            const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+            
+            window.location.href = url;
+        }
+
+        window.onload = function() {
+            renderDynamicMaterials();
+            renderSettingsPanel();
+            onQuantityChange();
+        };
+    </script>
+</body>
+</html>
