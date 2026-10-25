@@ -20,7 +20,8 @@
             <div class="w-full sm:w-auto flex justify-center sm:justify-start">
                 <img src="https://hanicraft.in/web/assets/images/logo/logo.png" 
                      alt="Hanicraft Logo" 
-                     class="h-12 sm:h-14 w-auto object-contain brightness-0 invert">
+                     class="h-12 sm:h-14 w-auto object-contain brightness-0 invert"
+                     onerror="this.src='https://placehold.co/180x50/0f172a/ffffff?text=HANICRAFT'">
             </div>
 
             <div class="flex items-center gap-2">
@@ -49,7 +50,7 @@
                         <input type="file" id="importFileInput" accept=".json" onchange="importDataFromFile(event)" class="hidden">
                     </label>
                     <button type="button" onclick="openAddMaterialModal()" class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 rounded-md font-medium transition">
-                        + Material
+                        + Material Category
                     </button>
                     <button type="button" onclick="openAddSubcatModal()" class="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 rounded-md font-medium transition">
                         + Subcat
@@ -76,13 +77,13 @@
         <div id="addMaterialModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
             <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 w-full max-w-sm space-y-3 shadow-xl">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h3 class="text-xs font-bold text-white uppercase tracking-wide">Add Material</h3>
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wide">Add Material Category</h3>
                     <button type="button" onclick="closeAddMaterialModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="space-y-2 text-xs">
                     <div>
                         <label class="block text-slate-400 mb-1">Material Name</label>
-                        <input type="text" id="modalMaterialName" placeholder="e.g. Glass, Brass, MDF Board" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none">
+                        <input type="text" id="modalMaterialName" placeholder="e.g. Metal, Composite Board" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none">
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 pt-2 border-t border-slate-800 text-xs font-semibold">
@@ -165,10 +166,7 @@
                 <!-- Materials Block Container -->
                 <div class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3.5 space-y-3">
                     <div class="flex items-center justify-between pb-1 border-b border-slate-700/50">
-                        <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Materials</span>
-                        <button type="button" onclick="openAddMaterialModal()" class="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300">
-                            + Add Material
-                        </button>
+                        <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Materials & Layers</span>
                     </div>
 
                     <div id="dynamicMaterialsContainer" class="space-y-2.5"></div>
@@ -325,15 +323,29 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'memento_material_rates_v13_layer_toggle';
+        const STORAGE_KEY = 'memento_material_rates_v15_layers';
         let materialRates = loadSavedRates();
+
+        // Active material instances in calculation area
+        let activeMaterialInstances = [
+            { instanceId: 'inst_wood_1', matId: 'wood', subcatId: 'rubwood', thicknessId: 'rw_8mm', w: 8, h: 10, checked: true },
+            { instanceId: 'inst_acrylic_1', matId: 'acrylic', subcatId: 'clear_acrylic', thicknessId: 'a_3mm', w: 8, h: 10, checked: true }
+        ];
 
         if (navigator.storage && navigator.storage.persist) {
             navigator.storage.persist().then(granted => {
-                if (granted) {
-                    console.log("Permanent storage persistence granted!");
-                }
+                if (granted) console.log("Storage persistence active");
             });
+        }
+
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            if (panel) {
+                panel.classList.toggle('hidden');
+                if (!panel.classList.contains('hidden')) {
+                    renderSettingsPanel();
+                }
+            }
         }
 
         function saveRates() {
@@ -428,12 +440,14 @@
                     {
                         id: 'glass',
                         name: 'Glass Layer',
-                        icon: 'fa-window-maximize',
+                        icon: 'fa-square',
                         subcategories: [
                             {
-                                id: 'clear_glass', name: 'Clear Glass', variants: [
-                                    { id: 'g_4mm', name: '4 mm', rate: 280, cutCostSheet: 0, sheetAreaSqFt: 1 },
-                                    { id: 'g_6mm', name: '6 mm', rate: 380, cutCostSheet: 0, sheetAreaSqFt: 1 }
+                                id: 'plain_glass', name: 'Plain Glass', variants: [
+                                    { id: 'g_6mm', name: '6 mm', rate: 350, cutCostSheet: 0, sheetAreaSqFt: 32 },
+                                    { id: 'g_8mm', name: '8 mm', rate: 450, cutCostSheet: 0, sheetAreaSqFt: 32 },
+                                    { id: 'g_10mm', name: '10 mm', rate: 600, cutCostSheet: 0, sheetAreaSqFt: 32 },
+                                    { id: 'g_12mm', name: '12 mm', rate: 750, cutCostSheet: 0, sheetAreaSqFt: 32 }
                                 ]
                             }
                         ]
@@ -442,12 +456,52 @@
             };
         }
 
-        function toggleSettings() {
-            const panel = document.getElementById('settingsPanel');
-            panel.classList.toggle('hidden');
+        function addMaterialInstance(matId, targetInstanceId = null) {
+            const mat = materialRates.materials.find(m => m.id === matId);
+            if (!mat) return;
+            const subcat = mat.subcategories[0];
+            const variant = subcat?.variants[0];
+
+            const newInstance = {
+                instanceId: `inst_${matId}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                matId: matId,
+                subcatId: subcat ? subcat.id : '',
+                thicknessId: variant ? variant.id : '',
+                w: 8,
+                h: 10,
+                checked: true
+            };
+
+            if (targetInstanceId) {
+                const targetIdx = activeMaterialInstances.findIndex(i => i.instanceId === targetInstanceId);
+                if (targetIdx !== -1) {
+                    activeMaterialInstances.splice(targetIdx + 1, 0, newInstance);
+                } else {
+                    activeMaterialInstances.push(newInstance);
+                }
+            } else {
+                activeMaterialInstances.push(newInstance);
+            }
+
+            renderDynamicMaterials();
+            calculate();
+        }
+
+        function removeMaterialInstance(instanceId) {
+            activeMaterialInstances = activeMaterialInstances.filter(i => i.instanceId !== instanceId);
+            renderDynamicMaterials();
+            calculate();
+        }
+
+        function renderAddButtonsHeader() {
+            const container = document.getElementById('addButtonsHeaderContainer');
+            if (container) {
+                container.innerHTML = '';
+            }
         }
 
         function renderDynamicMaterials() {
+            renderAddButtonsHeader();
             const container = document.getElementById('dynamicMaterialsContainer');
             const summaryContainer = document.getElementById('materialBreakdownContainer');
             if (!container || !summaryContainer) return;
@@ -455,82 +509,127 @@
             container.innerHTML = '';
             summaryContainer.innerHTML = '';
 
-            materialRates.materials.forEach(mat => {
+            activeMaterialInstances.forEach((inst, index) => {
+                const mat = materialRates.materials.find(m => m.id === inst.matId);
+                if (!mat) return;
+
                 const matCard = document.createElement('div');
                 matCard.className = 'p-2.5 bg-slate-900/80 border border-slate-700/60 rounded-xl space-y-2';
-                
+
                 let subcatOptions = '';
                 mat.subcategories.forEach(sub => {
-                    subcatOptions += `<option value="${sub.id}">${sub.name}</option>`;
+                    const sel = sub.id === inst.subcatId ? 'selected' : '';
+                    subcatOptions += `<option value="${sub.id}" ${sel}>${sub.name}</option>`;
                 });
 
                 matCard.innerHTML = `
                     <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
                         <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-200">
-                            <input type="checkbox" id="chk_${mat.id}" checked onchange="calculate()" class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-amber-500">
-                            <i class="fa-solid ${mat.icon || 'fa-cubes'} text-amber-400"></i> ${mat.name}
+                            <input type="checkbox" id="chk_${inst.instanceId}" ${inst.checked ? 'checked' : ''} onchange="updateInstanceChecked('${inst.instanceId}')" class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-amber-500">
+                            <i class="fa-solid ${mat.icon || 'fa-cubes'} text-amber-400"></i> ${mat.name} #${index + 1}
                         </label>
-                        <span id="subtotal_${mat.id}" class="text-xs font-bold text-amber-400">₹0.00</span>
+                        <div class="flex items-center gap-2">
+                            <span id="subtotal_${inst.instanceId}" class="text-xs font-bold text-amber-400">₹0.00</span>
+                            <button type="button" onclick="addMaterialInstance('${inst.matId}', '${inst.instanceId}')" class="text-emerald-400 hover:text-emerald-300 text-xs px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded transition flex items-center gap-1" title="Add Layer Below">
+                                <i class="fa-solid fa-plus text-[10px]"></i>
+                            </button>
+                            <button type="button" onclick="removeMaterialInstance('${inst.instanceId}')" class="text-rose-400 hover:text-rose-300 text-xs px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded transition flex items-center gap-1" title="Delete Layer">
+                                <i class="fa-solid fa-trash-can text-[10px]"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-12 gap-2 text-xs">
                         <div class="col-span-6 sm:col-span-4">
                             <label class="text-[10px] text-slate-400 block mb-0.5">Type</label>
-                            <select id="subcat_${mat.id}" onchange="populateThicknessDropdown('${mat.id}')" class="w-full bg-slate-800 border border-slate-700 text-white rounded px-2 py-1 text-xs focus:outline-none">
+                            <select id="subcat_${inst.instanceId}" onchange="onInstanceSubcatChange('${inst.instanceId}')" class="w-full bg-slate-800 border border-slate-700 text-white rounded px-2 py-1 text-xs focus:outline-none">
                                 ${subcatOptions}
                             </select>
                         </div>
                         <div class="col-span-6 sm:col-span-4">
                             <label class="text-[10px] text-slate-400 block mb-0.5">Thickness</label>
-                            <select id="thickness_${mat.id}" onchange="calculate()" class="w-full bg-slate-800 border border-slate-700 text-white rounded px-2 py-1 text-xs focus:outline-none">
+                            <select id="thickness_${inst.instanceId}" onchange="onInstanceThicknessChange('${inst.instanceId}')" class="w-full bg-slate-800 border border-slate-700 text-white rounded px-2 py-1 text-xs focus:outline-none">
                             </select>
                         </div>
                         <div class="col-span-6 sm:col-span-2">
                             <label class="text-[10px] text-slate-400 block mb-0.5">W (in)</label>
-                            <input type="number" id="w_${mat.id}" value="8" oninput="calculate()" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white font-semibold focus:outline-none">
+                            <input type="number" id="w_${inst.instanceId}" value="${inst.w}" oninput="updateInstanceDim('${inst.instanceId}')" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white font-semibold focus:outline-none">
                         </div>
                         <div class="col-span-6 sm:col-span-2">
                             <label class="text-[10px] text-slate-400 block mb-0.5">H (in)</label>
-                            <input type="number" id="h_${mat.id}" value="10" oninput="calculate()" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white font-semibold focus:outline-none">
+                            <input type="number" id="h_${inst.instanceId}" value="${inst.h}" oninput="updateInstanceDim('${inst.instanceId}')" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white font-semibold focus:outline-none">
                         </div>
                     </div>
                 `;
                 container.appendChild(matCard);
 
-                populateThicknessDropdown(mat.id);
+                populateThicknessDropdown(inst.instanceId);
 
                 const summaryRow = document.createElement('div');
-                summaryRow.id = `row_${mat.id}`;
+                summaryRow.id = `row_${inst.instanceId}`;
                 summaryRow.className = 'flex justify-between text-slate-400';
                 summaryRow.innerHTML = `
-                    <span>• ${mat.name} (<span id="subcatLabel_${mat.id}">-</span>):</span>
-                    <span id="costDisplay_${mat.id}" class="text-white">₹0.00</span>
+                    <span>• ${mat.name} (${inst.subcatId}):</span>
+                    <span id="costDisplay_${inst.instanceId}" class="text-white">₹0.00</span>
                 `;
                 summaryContainer.appendChild(summaryRow);
             });
         }
 
-        function populateThicknessDropdown(matId) {
-            const mat = materialRates.materials.find(m => m.id === matId);
-            if (!mat) return;
+        function updateInstanceChecked(instanceId) {
+            const inst = activeMaterialInstances.find(i => i.instanceId === instanceId);
+            if (inst) {
+                inst.checked = document.getElementById(`chk_${instanceId}`)?.checked || false;
+            }
+            calculate();
+        }
 
-            const subcatSelect = document.getElementById(`subcat_${matId}`);
-            const thicknessSelect = document.getElementById(`thickness_${matId}`);
-            if (!subcatSelect || !thicknessSelect) return;
+        function updateInstanceDim(instanceId) {
+            const inst = activeMaterialInstances.find(i => i.instanceId === instanceId);
+            if (inst) {
+                inst.w = parseFloat(document.getElementById(`w_${instanceId}`)?.value) || 0;
+                inst.h = parseFloat(document.getElementById(`h_${instanceId}`)?.value) || 0;
+            }
+            calculate();
+        }
 
-            const subcatId = subcatSelect.value || (mat.subcategories[0] ? mat.subcategories[0].id : null);
-            const subcat = mat.subcategories.find(s => s.id === subcatId) || mat.subcategories[0];
+        function onInstanceSubcatChange(instanceId) {
+            const inst = activeMaterialInstances.find(i => i.instanceId === instanceId);
+            if (inst) {
+                inst.subcatId = document.getElementById(`subcat_${instanceId}`)?.value;
+            }
+            populateThicknessDropdown(instanceId);
+            calculate();
+        }
+
+        function onInstanceThicknessChange(instanceId) {
+            const inst = activeMaterialInstances.find(i => i.instanceId === instanceId);
+            if (inst) {
+                inst.thicknessId = document.getElementById(`thickness_${instanceId}`)?.value;
+            }
+            calculate();
+        }
+
+        function populateThicknessDropdown(instanceId) {
+            const inst = activeMaterialInstances.find(i => i.instanceId === instanceId);
+            if (!inst) return;
+
+            const mat = materialRates.materials.find(m => m.id === inst.matId);
+            const thicknessSelect = document.getElementById(`thickness_${instanceId}`);
+            if (!mat || !thicknessSelect) return;
+
+            const subcat = mat.subcategories.find(s => s.id === inst.subcatId) || mat.subcategories[0];
 
             thicknessSelect.innerHTML = '';
             if (subcat && subcat.variants) {
                 subcat.variants.forEach(v => {
                     const opt = document.createElement('option');
                     opt.value = v.id;
+                    if (v.id === inst.thicknessId) opt.selected = true;
                     opt.text = `${v.name} (₹${v.rate}/sq.ft)`;
                     thicknessSelect.appendChild(opt);
                 });
             }
-            calculate();
         }
 
         function renderSettingsPanel() {
@@ -746,7 +845,7 @@
 
                 saveRates();
                 renderSettingsPanel();
-                populateThicknessDropdown(matId);
+                renderDynamicMaterials();
                 closeAddVariantModal();
                 calculate();
             }
@@ -755,7 +854,10 @@
         function deleteMainMaterial(matId) {
             if (materialRates.materials.length <= 1) return;
             materialRates.materials = materialRates.materials.filter(m => m.id !== matId);
-            
+            activeMaterialInstances = activeMaterialInstances.filter(i => i.matId !== matId);
+            if (activeMaterialInstances.length === 0 && materialRates.materials[0]) {
+                addMaterialInstance(materialRates.materials[0].id);
+            }
             saveRates();
             renderDynamicMaterials();
             renderSettingsPanel();
@@ -783,7 +885,7 @@
             
             saveRates();
             renderSettingsPanel();
-            populateThicknessDropdown(matId);
+            renderDynamicMaterials();
             calculate();
         }
 
@@ -856,15 +958,12 @@
             if (isManualProfitEdit) {
                 document.getElementById('autoProfitBadge').classList.add('hidden');
             }
-
             if (isManualLaserEdit) {
                 document.getElementById('autoLaserBadge').classList.add('hidden');
             }
-
             if (isManualCncEdit) {
                 document.getElementById('autoCncBadge').classList.add('hidden');
             }
-
             if (isManualPaintEdit) {
                 document.getElementById('autoPaintBadge').classList.add('hidden');
             }
@@ -874,10 +973,70 @@
             let totalAutoCncCutCost = 0;
             let woodSqFtTotal = 0;
 
-            const woodChecked = document.getElementById('chk_wood')?.checked || false;
-            const acrylicChecked = document.getElementById('chk_acrylic')?.checked || false;
+            let woodChecked = false;
+            let acrylicChecked = false;
 
-            // Dynamically show or hide cutting & paint cards based on checked layers
+            const fmt = (val) => '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            activeMaterialInstances.forEach((inst, index) => {
+                const mat = materialRates.materials.find(m => m.id === inst.matId);
+                const chk = document.getElementById(`chk_${inst.instanceId}`);
+                const isChecked = chk ? chk.checked : inst.checked;
+
+                if (!mat || !isChecked) {
+                    const subEl = document.getElementById(`subtotal_${inst.instanceId}`);
+                    if (subEl) subEl.innerText = '₹0.00';
+                    const rowEl = document.getElementById(`row_${inst.instanceId}`);
+                    if (rowEl) rowEl.classList.add('hidden');
+                    return;
+                }
+
+                if (inst.matId === 'wood') woodChecked = true;
+                if (inst.matId === 'acrylic') acrylicChecked = true;
+
+                const w = parseFloat(document.getElementById(`w_${inst.instanceId}`)?.value) || 0;
+                const h = parseFloat(document.getElementById(`h_${inst.instanceId}`)?.value) || 0;
+                const sqFeet = (w * h) / 144;
+
+                if (inst.matId === 'wood') {
+                    woodSqFtTotal += sqFeet;
+                }
+
+                const subcatId = document.getElementById(`subcat_${inst.instanceId}`)?.value || inst.subcatId;
+                const variantId = document.getElementById(`thickness_${inst.instanceId}`)?.value || inst.thicknessId;
+
+                const subcat = mat.subcategories.find(s => s.id === subcatId) || mat.subcategories[0];
+                const variant = subcat?.variants.find(v => v.id === variantId) || subcat?.variants[0];
+
+                const rate = variant ? variant.rate : 0;
+                const cost = sqFeet * rate;
+                totalMatCost += cost;
+
+                if (variant && variant.cutCostSheet) {
+                    const fullSheetSqFt = variant.sheetAreaSqFt || (inst.matId === 'wood' ? 32 : 12);
+                    const cutPerSqFt = variant.cutCostSheet / fullSheetSqFt;
+                    
+                    if (inst.matId === 'wood') {
+                        totalAutoCncCutCost += sqFeet * cutPerSqFt;
+                    } else if (inst.matId === 'acrylic') {
+                        totalAutoLaserCutCost += sqFeet * cutPerSqFt;
+                    }
+                }
+
+                const subtotalEl = document.getElementById(`subtotal_${inst.instanceId}`);
+                if (subtotalEl) subtotalEl.innerText = fmt(cost);
+
+                const costDisp = document.getElementById(`costDisplay_${inst.instanceId}`);
+                if (costDisp) costDisp.innerText = fmt(cost);
+
+                const rowEl = document.getElementById(`row_${inst.instanceId}`);
+                if (rowEl) {
+                    rowEl.classList.remove('hidden');
+                    rowEl.querySelector('span').innerText = `• ${mat.name} #${index + 1} (${subcat ? subcat.name : ''}):`;
+                }
+            });
+
+            // Dynamic visibility of processing cards based on checked materials
             const cncCard = document.getElementById('cncCostCard');
             const laserCard = document.getElementById('laserCutCostCard');
             const paintCard = document.getElementById('paintContainerCard');
@@ -899,66 +1058,8 @@
                 document.getElementById('laserCutCost').value = 0;
             }
 
-            const fmt = (val) => '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-            materialRates.materials.forEach(mat => {
-                const chk = document.getElementById(`chk_${mat.id}`);
-                if (!chk || !chk.checked) {
-                    const subEl = document.getElementById(`subtotal_${mat.id}`);
-                    if (subEl) subEl.innerText = '₹0.00';
-                    const rowEl = document.getElementById(`row_${mat.id}`);
-                    if (rowEl) rowEl.classList.add('hidden');
-                    return;
-                }
-
-                const w = parseFloat(document.getElementById(`w_${mat.id}`)?.value) || 0;
-                const h = parseFloat(document.getElementById(`h_${mat.id}`)?.value) || 0;
-                const sqFeet = (w * h) / 144;
-
-                if (mat.id === 'wood') {
-                    woodSqFtTotal += sqFeet;
-                }
-
-                const subcatId = document.getElementById(`subcat_${mat.id}`)?.value;
-                const variantId = document.getElementById(`thickness_${mat.id}`)?.value;
-
-                const subcat = mat.subcategories.find(s => s.id === subcatId) || mat.subcategories[0];
-                const variant = subcat?.variants.find(v => v.id === variantId) || subcat?.variants[0];
-
-                const rate = variant ? variant.rate : 0;
-                const cost = sqFeet * rate;
-                totalMatCost += cost;
-
-                // Auto calculate Cutting cost based on layer type
-                if (variant && variant.cutCostSheet) {
-                    const fullSheetSqFt = variant.sheetAreaSqFt || (mat.id === 'wood' ? 32 : 12);
-                    const cutPerSqFt = variant.cutCostSheet / fullSheetSqFt;
-                    
-                    if (mat.id === 'wood' && woodChecked) {
-                        totalAutoCncCutCost += sqFeet * cutPerSqFt;
-                    } else if (mat.id === 'acrylic' && acrylicChecked) {
-                        totalAutoLaserCutCost += sqFeet * cutPerSqFt;
-                    }
-                }
-
-                const subtotalEl = document.getElementById(`subtotal_${mat.id}`);
-                if (subtotalEl) subtotalEl.innerText = fmt(cost);
-
-                const costDisp = document.getElementById(`costDisplay_${mat.id}`);
-                if (costDisp) costDisp.innerText = fmt(cost);
-
-                if (subcat) {
-                    const subLbl = document.getElementById(`subcatLabel_${mat.id}`);
-                    if (subLbl) subLbl.innerText = subcat.name;
-                }
-
-                const rowEl = document.getElementById(`row_${mat.id}`);
-                if (rowEl) rowEl.classList.remove('hidden');
-            });
-
             const qty = parseInt(document.getElementById('itemQuantity').value) || 1;
 
-            // Enforce minimum floor rules for 1 to 2 Pcs
             if (qty >= 1 && qty <= 2) {
                 if (woodChecked && totalAutoCncCutCost > 0 && totalAutoCncCutCost < 300) {
                     totalAutoCncCutCost = 300;
@@ -968,7 +1069,6 @@
                 }
             }
 
-            // Auto calculate Paint/Polish cost with minimum ₹250 rule for 1-2 quantity
             if (woodChecked && !isManualPaintEdit) {
                 const paintKey = document.getElementById('paintTypeSelect')?.value || 'none';
                 let calculatedPaintCost = 0;
@@ -979,7 +1079,6 @@
                     const paintPerSqFt = sheetRate / sheetSqFt;
                     calculatedPaintCost = woodSqFtTotal * paintPerSqFt;
 
-                    // Enforce Minimum ₹250 Paint Cost for 1 to 2 Pcs
                     if (qty >= 1 && qty <= 2 && calculatedPaintCost > 0 && calculatedPaintCost < 250) {
                         calculatedPaintCost = 250;
                     }
@@ -989,13 +1088,11 @@
                 document.getElementById('autoPaintBadge').classList.remove('hidden');
             }
 
-            // Update Laser Cut Cost automatically if auto mode is active
             if (acrylicChecked && !isManualLaserEdit && totalAutoLaserCutCost > 0) {
                 document.getElementById('laserCutCost').value = Math.round(totalAutoLaserCutCost);
                 document.getElementById('autoLaserBadge').classList.remove('hidden');
             }
 
-            // Update CNC Cut Cost automatically if auto mode is active
             if (woodChecked && !isManualCncEdit && totalAutoCncCutCost > 0) {
                 document.getElementById('cncCost').value = Math.round(totalAutoCncCutCost);
                 document.getElementById('autoCncBadge').classList.remove('hidden');
@@ -1050,15 +1147,17 @@
             const qty = parseInt(document.getElementById('itemQuantity').value) || 1;
             
             let materialsText = '';
-            materialRates.materials.forEach(mat => {
-                const chk = document.getElementById(`chk_${mat.id}`);
+            activeMaterialInstances.forEach((inst, index) => {
+                const chk = document.getElementById(`chk_${inst.instanceId}`);
                 if (chk && chk.checked) {
-                    const w = document.getElementById(`w_${mat.id}`)?.value || '0';
-                    const h = document.getElementById(`h_${mat.id}`)?.value || '0';
-                    const subcatName = document.getElementById(`subcatLabel_${mat.id}`)?.innerText || '';
-                    const sel = document.getElementById(`thickness_${mat.id}`);
-                    const text = sel?.options[sel.selectedIndex]?.text.split('(')[0].trim() || '';
-                    materialsText += `• *${mat.name} (${subcatName}):* ${text} (${w}" x ${h}")\n`;
+                    const mat = materialRates.materials.find(m => m.id === inst.matId);
+                    const w = document.getElementById(`w_${inst.instanceId}`)?.value || '0';
+                    const h = document.getElementById(`h_${inst.instanceId}`)?.value || '0';
+                    const subcatId = document.getElementById(`subcat_${inst.instanceId}`)?.value;
+                    const subcat = mat?.subcategories.find(s => s.id === subcatId);
+                    const sel = document.getElementById(`thickness_${inst.instanceId}`);
+                    const thickText = sel?.options[sel.selectedIndex]?.text.split('(')[0].trim() || '';
+                    materialsText += `• *${mat?.name || 'Material'} #${index + 1} (${subcat?.name || ''}):* ${thickText} (${w}" x ${h}")\n`;
                 }
             });
 
